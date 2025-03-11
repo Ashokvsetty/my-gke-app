@@ -26,16 +26,27 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+    # Install gke-gcloud-auth-plugin
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin --quiet
+
     # Configure Docker to use gcloud for authentication
     - name: Configure Docker
       run: |
         gcloud auth configure-docker --quiet
 
+    # Debug project ID
+    - name: Debug GCP_PROJECT_ID
+      run: echo "GCP_PROJECT_ID is ${{ secrets.GCP_PROJECT_ID }}"
+
     # Build and push Docker image
     - name: Build and Push Docker Image
       run: |
         docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }} .
+        docker tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }} gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:latest
         docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }}
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:latest
 
     # Get GKE cluster credentials
     - name: Get GKE Credentials
