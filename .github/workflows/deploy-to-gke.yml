@@ -1,0 +1,51 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Authenticate to GCP
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    # Set up gcloud CLI
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    # Configure Docker to use gcloud for authentication
+    - name: Configure Docker
+      run: |
+        gcloud auth configure-docker --quiet
+
+    # Build and push Docker image
+    - name: Build and Push Docker Image
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }} .
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }}
+
+    # Get GKE cluster credentials
+    - name: Get GKE Credentials
+      run: |
+        gcloud container clusters get-credentials my-small-cluster \
+          --zone=us-central1-a \
+          --project=${{ secrets.GCP_PROJECT_ID }}
+
+    # Deploy to GKE
+    - name: Deploy to GKE
+      run: |
+        kubectl apply -f deployment.yaml
+        kubectl set image deployment/my-app my-app=gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-app:${{ github.sha }}
